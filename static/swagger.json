@@ -36,8 +36,22 @@
                    "name": "file",
                    "type": "file",
                    "required": true,
-                   "description": "Name the user to register."
-                }
+                   "description": "Image of the user to register."
+                },
+                {
+                  "in": "formData",
+                  "name": "institute",
+                  "type": "integer",
+                  "required": true,
+                  "description": "Institute ID of the user to register."
+               },
+               {
+                  "in": "formData",
+                  "name": "gender",
+                  "type": "string",
+                  "required": true,
+                  "description": "Gender of the user to register."
+               }
              ]
           }
        },
@@ -60,8 +74,22 @@
                  "name": "file",
                  "type": "file",
                  "required": true,
-                 "description": "Name the user to register."
-              }
+                 "description": "Image of the user to verify."
+              },
+              {
+               "in": "formData",
+               "name": "institute",
+               "type": "integer",
+               "required": true,
+               "description": "Institute ID of the user to verify."
+            },
+            {
+               "in": "formData",
+               "name": "gender",
+               "type": "string",
+               "required": true,
+               "description": "Gender of the user to verify."
+            }
            ]
         }
      }
