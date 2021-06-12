@@ -70,7 +70,7 @@ def register():
         name = request.form['name']
         if name.isspace() or name=='':
             del name
-            return jsonify({"status":400,"message":"No name is entered"})
+            return jsonify({"status":416,"message":"No name is entered"})
         mycursor.execute("SELECT student_name FROM students_table")
         results = mycursor.fetchall()
         for i in results:
@@ -82,17 +82,17 @@ def register():
         gender = request.form['gender']
         if gender.isspace() or gender=='':
             del gender
-            return jsonify({"status":400,"message":"No gender is entered"})        
+            return jsonify({"status":416,"message":"No gender is entered"})        
 
         # check if the post request has the file part
         if 'file' not in request.files:
-            return jsonify({"status":400,"message":"File variable not included in request"})
+            return jsonify({"status":406,"message":"File variable not included in request"})
         file = request.files['file']
         # If the user does not select a file, the browser submits an
         # empty file without a filename.
         if file.filename == '':
             del file,name,results
-            return jsonify({"status":400,"message":"No image uploaded"})
+            return jsonify({"status":406,"message":"No image uploaded"})
         if file and allowed_file(file.filename):
             filename = secure_filename(file.filename)
             path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
@@ -104,29 +104,29 @@ def register():
             except:
                 os.remove(path)
                 del filename,file,path,img,ct,results,name
-                return jsonify({"status":400,"message":"Unable to detect face"})
+                return jsonify({"status":401,"message":"Unable to detect face"})
 
             x = convertToBinaryData(path)
             try:
                 mycursor.execute("INSERT INTO students_table(institute_id, student_name, student_gender, student_embedding, created_at) VALUES (%s,%s,%s,%s,%s)",(institute,name,gender,json.dumps(list(embedding)),ct))
                 mydb.commit()
             except:
-                return jsonify({"status":400,"message":"Error while inserting data into students_table"})
+                return jsonify({"status":501,"message":"Error while inserting data into students_table"})
             try:
                 mycursor.execute("SELECT student_id FROM students_table WHERE student_name=%s AND institute_id=%s",(name,institute))
                 results = mycursor.fetchall()
             except:
-                return jsonify({"status":400,"message":"Error while fetching student id from students_table"})
+                return jsonify({"status":501,"message":"Error while fetching student id from students_table"})
             try:
                 mycursor.execute("INSERT INTO students_image(student_id, institute_id, student_gender, student_image, created_at) VALUES (%s,%s,%s,%s,%s)",(results[0][0],institute,gender,x,ct))
                 mydb.commit()
             except:
-                return jsonify({"status":400,"message":"Error while inserting data into students_image"})
+                return jsonify({"status":501,"message":"Error while inserting data into students_image"})
             os.remove(path)
             end_time = time.time()
             del filename,file,path,img,x,ct,results
             return jsonify({"status":200,"message":"User details registered","time_taken":end_time-start_time})
-    return jsonify({"status":400,"message":"Bad Request"})
+    return jsonify({"status":404,"message":"Not a valid route"})
     
 
 
@@ -141,15 +141,15 @@ def verify():
         gender = request.form['gender']
         if gender.isspace() or gender=='':
             del gender
-            return jsonify({"status":400,"message":"No gender is entered"})
+            return jsonify({"status":416,"message":"No gender is entered"})
         # check if the post request has the file part
         if 'file' not in request.files:
-            return jsonify({"status":400,"message":"File variable not included in request"})
+            return jsonify({"status":406,"message":"File variable not included in request"})
         file = request.files['file']
         # If the user does not select a file, the browser submits an
         # empty file without a filename.
         if file.filename == '':
-            return jsonify({"status":400,"message":"No image uploaded"})
+            return jsonify({"status":406,"message":"No image uploaded"})
         if file and allowed_file(file.filename):
             filename = secure_filename(file.filename)
             path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
@@ -162,14 +162,14 @@ def verify():
                 embedding = fr.face_encodings(img)[0]
             except:
                 os.remove(path)
-                return jsonify({"status":400,"message":"Unable to detect face"})
+                return jsonify({"status":401,"message":"Unable to detect face"})
 
             x = convertToBinaryData(path)
             try:
                 mycursor.execute("SELECT student_name,student_embedding FROM students_table WHERE student_gender=%s AND institute_id=%s",(gender,institute))
                 results = mycursor.fetchall()
             except:
-                return jsonify({"status":400,"message":"Error while fetching data from students_table"})
+                return jsonify({"status":502,"message":"Error while fetching data from students_table"})
             embeddings = []
             names = []
 
@@ -177,12 +177,10 @@ def verify():
                 names.append(i[0])
                 embeddings.append(list(json.loads(i[1])))
             results = fr.compare_faces(embeddings, embedding)
-            # print(results)
             if True not in results:
                 os.remove(path)
-                return jsonify({"status":200,"message":"User doen't exist in database"})
-            detectedFace = names[np.argmin(results)]
-            # ct = datetime.datetime.now(timezone)
+                return jsonify({"status":204,"message":"User doesn't exist in database"})
+            detectedFace = names[np.argmax(results)]
 
             os.remove(path)
             end_time = time.time()
@@ -195,11 +193,11 @@ def verify():
                 mycursor.execute("SELECT student_id FROM students_table WHERE student_name=%s AND institute_id=%s",(detectedFace,institute))
                 results = mycursor.fetchall()
             except:
-                return jsonify({"status":400,"message":"Error while fetching student id from students_table"})
+                return jsonify({"status":502,"message":"Error while fetching student id from students_table"})
             return jsonify({"status":200,"message":"User verified","name":detectedFace,"student_id":results[0][0],"time_taken":end_time-start_time})
-    return jsonify({"status":400,"message":"Bad Request"})
+    return jsonify({"status":404,"message":"Not a valid route"})
 
 
 if __name__ == '__main__':
     app.secret_key = os.getenv("SECRET_KEY")
-    app.run(debug = False,host=os.getenv("APP_HOST"),port=os.getenv("APP_PORT"))
+    app.run(debug = False ,host=os.getenv("APP_HOST"),port=os.getenv("APP_PORT"))
