@@ -179,6 +179,7 @@ def verify():
             results = fr.compare_faces(embeddings, embedding)
             # print(results)
             if True not in results:
+                os.remove(path)
                 return jsonify({"status":200,"message":"User doen't exist in database"})
             detectedFace = names[np.argmin(results)]
             # ct = datetime.datetime.now(timezone)
