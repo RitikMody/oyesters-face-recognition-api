@@ -123,8 +123,8 @@ def register():
             except:
                 return jsonify({"status":501,"message":"Error while inserting data into students_image"})
             os.remove(path)
-            end_time = time.time()
             del filename,file,path,img,x,ct,results
+            end_time = time.time()
             return jsonify({"status":200,"message":"User details registered","time_taken":end_time-start_time})
     return jsonify({"status":404,"message":"Not a valid route"})
     
@@ -181,20 +181,32 @@ def verify():
                 os.remove(path)
                 return jsonify({"status":204,"message":"User doesn't exist in database"})
             detectedFace = names[np.argmax(results)]
-
+            ct = datetime.datetime.now(timezone)
             os.remove(path)
-            end_time = time.time()
-            del names
-            del embeddings
-            del ct 
-            del results
-            del filename,file,path,img,x
+            del filename,file,path,img,x,names,embeddings,results
             try:
                 mycursor.execute("SELECT student_id FROM students_table WHERE student_name=%s AND institute_id=%s",(detectedFace,institute))
-                results = mycursor.fetchall()
+                students_id = mycursor.fetchall()
             except:
                 return jsonify({"status":502,"message":"Error while fetching student id from students_table"})
-            return jsonify({"status":200,"message":"User verified","name":detectedFace,"student_id":results[0][0],"time_taken":end_time-start_time})
+            try:
+                mycursor.execute("SELECT student_id,DATE_FORMAT(created_at, '%Y-%m-%d') FROM logs_table WHERE student_id=%s AND date(created_at) = %s",(students_id[0][0],ct.date()))
+                results = mycursor.fetchall()
+                # print(results)
+                punch=""
+                if(len(results)%2==0):
+                    punch = "punch_in"
+                else:
+                    punch = "punch_out"
+            except:
+                return jsonify({"status":502,"message":"Error while fetching student id from logs_table"})
+            try:
+                mycursor.execute("INSERT INTO logs_table(institute_id, student_id, student_name, punch_type, created_at) VALUES (%s,%s,%s,%s,%s)",(institute,students_id[0][0],detectedFace,punch,ct))
+                mydb.commit()
+            except:
+                return jsonify({"status":501,"message":"Error while inserting data into logs_table"})
+            end_time = time.time()
+            return jsonify({"status":200,"message":"User verified","name":detectedFace,"student_id":students_id[0][0],"punch_type":punch,"time_taken":end_time-start_time})
     return jsonify({"status":404,"message":"Not a valid route"})
 
 
